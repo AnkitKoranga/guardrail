@@ -4,7 +4,11 @@ A strict, CPU-optimized Django application that filters non-food requests before
 
 ## Features
 
+- **Two Separate Use Cases**:
+  - **Use Case 1: Image Analysis** - Analyzes uploaded images to verify they are food-related
+  - **Use Case 2: Prompt Analysis** - Validates user prompts for food context and restrictions
 - **Strict Guardrails**: Blocks NSFW, violence, hate speech, and non-food content locally.
+- **Fast Keyword Matching**: Instant approval for prompts containing food items (pizza, burger, etc.)
 - **Zero Token Waste**: Only passes safe, food-related requests to Gemini.
 - **CPU Optimized**: Uses small, efficient models (`all-MiniLM-L6-v2`, `ViT-B-32`, `NudeNet`).
 - **Async Processing**: Uses Celery + Redis to handle heavy ML tasks off the main web thread.
