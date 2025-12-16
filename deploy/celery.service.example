@@ -1,0 +1,19 @@
+[Unit]
+Description=Celery Service
+After=network.target
+
+[Service]
+Type=forking
+User=ankit.koranga
+Group=ankit.koranga
+WorkingDirectory=/home/ankit.koranga/guardrail
+ExecStart=/home/ankit.koranga/guardrail/venv/bin/celery -A foodguard multi start worker1 \
+          --pidfile=/var/run/celery/worker1.pid \
+          --logfile=/var/log/celery/worker1.log \
+          --loglevel=INFO \
+          --concurrency=1
+ExecStop=/home/ankit.koranga/guardrail/venv/bin/celery multi stopwait worker1 \
+         --pidfile=/var/run/celery/worker1.pid
+
+[Install]
+WantedBy=multi-user.target

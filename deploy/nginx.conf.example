@@ -1,0 +1,19 @@
+server {
+    listen 80;
+    server_name your_domain.com;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    
+    location /static/ {
+        root /home/ankit.koranga/guardrail/staticfiles;
+    }
+
+    location /media/ {
+        root /home/ankit.koranga/guardrail/media;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/gunicorn.sock;
+    }
+}

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Guard Demo</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 1400px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: #f5f5f5;
+        }
+        h1 { 
+            text-align: center; 
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .use-cases-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 968px) {
+            .use-cases-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        .use-case-section {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .use-case-section h2 {
+            margin-top: 0;
+            color: #2196F3;
+            border-bottom: 2px solid #2196F3;
+            padding-bottom: 10px;
+        }
+        .use-case-section.use-case-1 h2 {
+            color: #4CAF50;
+            border-bottom-color: #4CAF50;
+        }
+        .use-case-section.use-case-2 h2 {
+            color: #FF9800;
+            border-bottom-color: #FF9800;
+        }
+        .form-group { 
+            margin-bottom: 15px; 
+        }
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+            color: #555;
+        }
+        textarea { 
+            width: 100%; 
+            height: 100px; 
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button { 
+            padding: 12px 24px; 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        button:hover:not(:disabled) {
+            background: #218838;
+        }
+        button:disabled { 
+            background: #ccc; 
+            cursor: not-allowed;
+        }
+        .use-case-1 button {
+            background: #4CAF50;
+        }
+        .use-case-1 button:hover:not(:disabled) {
+            background: #45a049;
+        }
+        .use-case-2 button {
+            background: #FF9800;
+        }
+        .use-case-2 button:hover:not(:disabled) {
+            background: #f57c00;
+        }
+        .result-section {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background: #fafafa;
+            display: none;
+        }
+        .result-section.active {
+            display: block;
+        }
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .status-text {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .status-pass { color: green; }
+        .status-block { color: red; }
+        .status-processing { color: orange; }
+        .status-queued { color: #666; }
+        .time-taken {
+            color: #666;
+            font-size: 14px;
+            font-weight: normal;
+        }
+        .reasons, .scores {
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+        }
+        .scores pre {
+            margin: 0;
+            font-size: 12px;
+            overflow-x: auto;
+        }
+        .final-output {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+        }
+        .final-output img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .description {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 3px solid #2196F3;
+            border-radius: 4px;
+        }
+        .use-case-1 .description {
+            border-left-color: #4CAF50;
+        }
+        .use-case-2 .description {
+            border-left-color: #FF9800;
+        }
+    </style>
+</head>
+<body>
+    <h1>Food Guard AI</h1>
+    
+    <div class="use-cases-container">
+        <!-- Use Case 1: Image Analysis -->
+        <div class="use-case-section use-case-1">
+            <h2>Use Case 1: Image Analysis</h2>
+            <div class="description">
+                Upload an image to check if it's food-related. The system will analyze the image and only approve food items.
+            </div>
+            
+            <div class="form-group">
+                <label for="image1">Upload Image:</label>
+                <input type="file" id="image1" accept="image/*">
+            </div>
+            
+            <button id="submitBtn1" onclick="submitImageAnalysis()">Analyze Image</button>
+            
+            <div id="result1" class="result-section">
+                <div class="status-header">
+                    <div>
+                        <span class="status-text" id="statusText1">Processing...</span>
+                    </div>
+                    <div class="time-taken" id="timeTaken1"></div>
+                </div>
+                <div id="reasons1"></div>
+                <div id="scores1"></div>
+                <div id="finalOutput1" class="final-output"></div>
+            </div>
+        </div>
+        
+        <!-- Use Case 2: Prompt Analysis -->
+        <div class="use-case-section use-case-2">
+            <h2>Use Case 2: Prompt Analysis</h2>
+            <div class="description">
+                Enter a prompt to generate food-related content. The system will check for restrictions and food context.
+            </div>
+            
+            <div class="form-group">
+                <label for="prompt2">Food Prompt:</label>
+                <textarea id="prompt2" placeholder="e.g., Create a recipe for pasta, Generate an image of a burger..."></textarea>
+            </div>
+            
+            <button id="submitBtn2" onclick="submitPromptAnalysis()">Generate</button>
+            
+            <div id="result2" class="result-section">
+                <div class="status-header">
+                    <div>
+                        <span class="status-text" id="statusText2">Processing...</span>
+                    </div>
+                    <div class="time-taken" id="timeTaken2"></div>
+                </div>
+                <div id="reasons2"></div>
+                <div id="scores2"></div>
+                <div id="finalOutput2" class="final-output"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Track start times for each use case
+        const startTimes = {
+            useCase1: null,
+            useCase2: null
+        };
+
+        function formatTimeTaken(seconds) {
+            if (seconds < 1) {
+                return `${Math.round(seconds * 1000)}ms`;
+            }
+            return `${seconds.toFixed(2)}s`;
+        }
+
+        function updateTimeTaken(useCaseNum) {
+            const startTime = startTimes[`useCase${useCaseNum}`];
+            if (startTime) {
+                const elapsed = (Date.now() - startTime) / 1000;
+                document.getElementById(`timeTaken${useCaseNum}`).textContent = `Time: ${formatTimeTaken(elapsed)}`;
+            }
+        }
+
+        // Use Case 1: Image Analysis
+        async function submitImageAnalysis() {
+            const imageFile = document.getElementById('image1').files[0];
+            const btn = document.getElementById('submitBtn1');
+            const resultDiv = document.getElementById('result1');
+            
+            if (!imageFile) {
+                alert("Please upload an image");
+                return;
+            }
+
+            btn.disabled = true;
+            resultDiv.classList.add('active');
+            document.getElementById('statusText1').innerText = 'Submitting...';
+            document.getElementById('statusText1').className = 'status-text status-processing';
+            document.getElementById('reasons1').innerHTML = '';
+            document.getElementById('scores1').innerHTML = '';
+            document.getElementById('finalOutput1').innerHTML = '';
+            document.getElementById('timeTaken1').textContent = '';
+            
+            // Track start time
+            startTimes.useCase1 = Date.now();
+
+            const formData = new FormData();
+            formData.append('prompt', 'generate image with this image attached in center of the background');
+            formData.append('image', imageFile);
+
+            try {
+                const response = await fetch('/api/generate/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.id) {
+                    pollStatus(data.id, 1);
+                } else {
+                    document.getElementById('statusText1').innerText = 'Error submitting';
+                    document.getElementById('statusText1').className = 'status-text status-block';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('statusText1').innerText = 'Network Error';
+                document.getElementById('statusText1').className = 'status-text status-block';
+                btn.disabled = false;
+            }
+        }
+
+        // Use Case 2: Prompt Analysis
+        async function submitPromptAnalysis() {
+            const prompt = document.getElementById('prompt2').value;
+            const btn = document.getElementById('submitBtn2');
+            const resultDiv = document.getElementById('result2');
+            
+            if (!prompt.trim()) {
+                alert("Please enter a prompt");
+                return;
+            }
+
+            btn.disabled = true;
+            resultDiv.classList.add('active');
+            document.getElementById('statusText2').innerText = 'Submitting...';
+            document.getElementById('statusText2').className = 'status-text status-processing';
+            document.getElementById('reasons2').innerHTML = '';
+            document.getElementById('scores2').innerHTML = '';
+            document.getElementById('finalOutput2').innerHTML = '';
+            document.getElementById('timeTaken2').textContent = '';
+            
+            // Track start time
+            startTimes.useCase2 = Date.now();
+
+            const formData = new FormData();
+            formData.append('prompt', prompt);
+
+            try {
+                const response = await fetch('/api/generate/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.id) {
+                    pollStatus(data.id, 2);
+                } else {
+                    document.getElementById('statusText2').innerText = 'Error submitting';
+                    document.getElementById('statusText2').className = 'status-text status-block';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                document.getElementById('statusText2').innerText = 'Network Error';
+                document.getElementById('statusText2').className = 'status-text status-block';
+                btn.disabled = false;
+            }
+        }
+
+        async function pollStatus(id, useCaseNum) {
+            const statusSpan = document.getElementById(`statusText${useCaseNum}`);
+            const btn = document.getElementById(`submitBtn${useCaseNum}`);
+            
+            const interval = setInterval(async () => {
+                // Update time taken
+                updateTimeTaken(useCaseNum);
+                
+                try {
+                    const res = await fetch(`/api/status/${id}/`);
+                    const data = await res.json();
+                    
+                    const statusLower = data.status.toLowerCase();
+                    statusSpan.innerText = data.status;
+                    statusSpan.className = `status-text status-${statusLower}`;
+                    
+                    if (data.reasons && data.reasons.length > 0) {
+                        document.getElementById(`reasons${useCaseNum}`).innerHTML = 
+                            '<strong>Reasons:</strong> ' + data.reasons.join(', ');
+                    }
+                    
+                    if (data.scores && Object.keys(data.scores).length > 0) {
+                        document.getElementById(`scores${useCaseNum}`).innerHTML = 
+                            '<strong>Scores:</strong> <pre>' + JSON.stringify(data.scores, null, 2) + '</pre>';
+                    }
+
+                    if (data.result_text || data.result_image) {
+                        let outputHtml = '<strong>Gemini Response:</strong><br>';
+                        if (data.result_text) {
+                            outputHtml += '<p>' + data.result_text + '</p>';
+                        }
+                        if (data.result_image) {
+                            outputHtml += '<div style="margin-top: 10px;"><strong>Generated Image:</strong><br>';
+                            outputHtml += '<img src="data:image/png;base64,' + data.result_image + '" alt="Generated Image"></div>';
+                        }
+                        document.getElementById(`finalOutput${useCaseNum}`).innerHTML = outputHtml;
+                    }
+
+                    if (data.status === 'PASS' || data.status === 'BLOCK' || data.status === 'ERROR') {
+                        clearInterval(interval);
+                        btn.disabled = false;
+                        // Final time update
+                        updateTimeTaken(useCaseNum);
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
