@@ -1,6 +1,4 @@
 import logging
-import tempfile
-import os
 from typing import Optional
 from django.conf import settings
 from .schemas import GuardrailResult
@@ -9,7 +7,6 @@ from . import (
     text_policy,
     text_food_domain,
     image_hygiene,
-    image_nsfw,
     image_food_clip,
     cache
 )
@@ -41,6 +38,7 @@ class GuardrailEngine:
         Use Case 1: Analyze the uploaded image for food context.
         Prompt is expected to be "generate image with this image attached in center of the background".
         Focus: Check if image is food-related, then approve/block.
+        CLIP check handles both food detection and NSFW detection via negative labels.
         """
         logger.info("Processing Use Case 1: Image Analysis")
         
@@ -54,27 +52,12 @@ class GuardrailEngine:
         
         pil_image = res.metadata.get("pil_image")
         
-        # 2. Save to temp file for NudeNet
-        with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-            pil_image.save(tmp, format="JPEG")
-            tmp_path = tmp.name
-            
-        try:
-            # 3. NSFW Check
-            res = image_nsfw.check_nsfw(tmp_path)
-            if res.status == "BLOCK":
-                return self._block(res.reasons, request_hash, res.scores)
-            image_scores.update(res.scores)
-            
-            # 4. Food CLIP Check - This is the main check for business context
-            res = image_food_clip.check_food_clip(pil_image)
-            if res.status == "BLOCK":
-                return self._block(res.reasons, request_hash, res.scores)
-            image_scores.update(res.scores)
-            
-        finally:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+        # 2. Food CLIP Check - Handles both food detection and NSFW detection
+        # CLIP negative labels include NSFW terms, so no separate NSFW check needed
+        res = image_food_clip.check_food_clip(pil_image)
+        if res.status == "BLOCK":
+            return self._block(res.reasons, request_hash, res.scores)
+        image_scores.update(res.scores)
 
         # PASS - Image is food-related
         final_result = GuardrailResult(

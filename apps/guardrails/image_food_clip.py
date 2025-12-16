@@ -8,7 +8,18 @@ _preprocess = None
 _tokenizer = None
 
 POS_LABELS = ["a photo of food", "a meal", "a dish", "ingredients", "cooking"]
-NEG_LABELS = ["a nude person", "porn", "weapon", "gore", "a face portrait", "document", "child"]
+# Enhanced negative labels: NSFW, violence, and non-food content
+# CLIP now handles NSFW detection, eliminating need for separate NudeNet check
+NEG_LABELS = [
+    # NSFW content
+    "a nude person", "nudity", "naked person", "explicit nudity",
+    "porn", "pornography", "sexual content", "adult content",
+    # Violence and weapons
+    "weapon", "gun", "knife", "violence", "gore", "blood", "death",
+    # Non-food content
+    "a face portrait", "portrait", "person", "people",
+    "document", "text", "paper", "child", "minor"
+]
 
 def get_clip_model():
     global _model, _preprocess, _tokenizer
@@ -19,7 +30,10 @@ def get_clip_model():
     return _model, _preprocess, _tokenizer
 
 def check_food_clip(pil_image: Image.Image, margin: float = 0.1) -> GuardrailResult:
-    """Check if image is food-related using CLIP."""
+    """
+    Check if image is food-related using CLIP.
+    Also detects NSFW content via negative labels, eliminating need for separate NSFW detector.
+    """
     try:
         model, preprocess, tokenizer = get_clip_model()
         
@@ -43,11 +57,21 @@ def check_food_clip(pil_image: Image.Image, margin: float = 0.1) -> GuardrailRes
         max_neg = max(neg_probs)
         
         # Check if top label is positive AND margin is sufficient
+        # This also blocks NSFW content since negative labels include NSFW terms
         if max_pos < max_neg + margin:
-             return GuardrailResult(
+            # Determine reason based on which negative label scored highest
+            neg_label_idx = neg_probs.index(max_neg)
+            neg_label = NEG_LABELS[neg_label_idx]
+            
+            # Check if it's NSFW-related
+            nsfw_terms = ["nude", "naked", "porn", "sexual", "adult"]
+            is_nsfw = any(term in neg_label.lower() for term in nsfw_terms)
+            
+            reason = f"NSFW content detected: {neg_label}" if is_nsfw else f"Image not clearly food (pos: {max_pos:.2f}, neg: {max_neg:.2f})"
+            return GuardrailResult(
                 status="BLOCK",
-                reasons=[f"Image not clearly food (pos: {max_pos:.2f}, neg: {max_neg:.2f})"],
-                scores={"food_score": max_pos, "non_food_score": max_neg}
+                reasons=[reason],
+                scores={"food_score": max_pos, "non_food_score": max_neg, "top_negative_label": neg_label}
             )
             
         return GuardrailResult(
