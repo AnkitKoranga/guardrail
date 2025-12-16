@@ -1,9 +1,9 @@
 import logging
 import tempfile
 import os
-from typing import Optional, Tuple
+from typing import Optional
 from django.conf import settings
-from .schemas import GuardrailResult, StructuredRequest
+from .schemas import GuardrailResult
 from . import (
     text_injection,
     text_policy,

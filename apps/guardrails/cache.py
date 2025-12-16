@@ -1,5 +1,4 @@
 import hashlib
-import json
 from django.core.cache import cache
 from .schemas import GuardrailResult
 
