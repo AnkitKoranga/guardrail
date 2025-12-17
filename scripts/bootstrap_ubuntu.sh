@@ -22,7 +22,6 @@ echo "Downloading ML models..."
 python3 -c "
 from sentence_transformers import SentenceTransformer
 import open_clip
-import nudenet
 
 print('Downloading Sentence Transformer...')
 SentenceTransformer('all-MiniLM-L6-v2')
@@ -30,12 +29,7 @@ SentenceTransformer('all-MiniLM-L6-v2')
 print('Downloading OpenCLIP...')
 open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
 
-print('Downloading NudeNet...')
-# NudeNet downloads automatically on first use usually, but we can trigger init
-try:
-    nudenet.NudeClassifier()
-except:
-    pass
+print('Models downloaded successfully!')
 "
 
 # 4. Django Setup

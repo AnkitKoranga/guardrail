@@ -2,8 +2,6 @@ import google.generativeai as genai
 from django.conf import settings
 from .prompt_template import SYSTEM_PROMPT
 import base64
-import io
-from PIL import Image
 import logging
 
 logger = logging.getLogger(__name__)
