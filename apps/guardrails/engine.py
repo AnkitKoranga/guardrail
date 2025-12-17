@@ -37,10 +37,11 @@ class GuardrailEngine:
         """
         Use Case 1: Analyze the uploaded image for food context.
         Prompt is expected to be "generate image with this image attached in center of the background".
-        Focus: Check if image is food-related, then approve/block.
+        Focus: Check if image is food-related, identify food type, then approve/block.
         CLIP check handles both food detection and NSFW detection via negative labels.
+        Returns identified food type (pizza, cake, etc.) in scores and metadata.
         """
-        logger.info("Processing Use Case 1: Image Analysis")
+        logger.info("Processing Use Case 1: Image Analysis with Food Identification")
         
         pil_image = None
         image_scores = {}
@@ -52,21 +53,32 @@ class GuardrailEngine:
         
         pil_image = res.metadata.get("pil_image")
         
-        # 2. Food CLIP Check - Handles both food detection and NSFW detection
-        # CLIP negative labels include NSFW terms, so no separate NSFW check needed
-        res = image_food_clip.check_food_clip(pil_image)
+        # 2. Food CLIP Check - Handles food detection, NSFW detection, AND food type identification
+        # identify_type=True ensures we get what kind of food it is (pizza, cake, etc.)
+        res = image_food_clip.check_food_clip(pil_image, identify_type=True)
         if res.status == "BLOCK":
             return self._block(res.reasons, request_hash, res.scores)
+        
         image_scores.update(res.scores)
+        
+        # Get food identification metadata
+        food_identification = res.metadata.get("food_identification", {})
+        
+        logger.info(f"Food identified: {food_identification.get('food_type', 'unknown')} "
+                   f"(confidence: {food_identification.get('confidence', 0):.1f}%)")
 
-        # PASS - Image is food-related
+        # PASS - Image is food-related with identification
         final_result = GuardrailResult(
             status="PASS",
             scores=image_scores,
-            metadata={"pil_image": pil_image, "use_case": "image_analysis"}
+            metadata={
+                "pil_image": pil_image, 
+                "use_case": "image_analysis",
+                "food_identification": food_identification
+            }
         )
         
-        # Cache the success
+        # Cache the success (without pil_image for serialization)
         cache_decision = GuardrailResult(
             status="PASS",
             scores=final_result.scores
@@ -79,9 +91,14 @@ class GuardrailEngine:
         """
         Use Case 2: Analyze user prompt for generating images.
         Focus: Check prompt for restrictions and food domain context.
-        Note: No image processing for this use case - prompt-only analysis.
+        If image is provided (optional), it must ALSO pass food validation.
+        Both prompt AND image (if present) must be approved for PASS.
         """
-        logger.info("Processing Use Case 2: Prompt Analysis")
+        logger.info(f"Processing Use Case 2: Prompt Analysis (image provided: {image_bytes is not None})")
+        
+        combined_scores = {}
+        pil_image = None
+        food_identification = None
         
         # 1. Hard Caps (Text)
         if len(prompt) > settings.GUARDRAILS_MAX_PROMPT_CHARS:
@@ -102,13 +119,48 @@ class GuardrailEngine:
         if res.status == "BLOCK":
             return self._block(res.reasons, request_hash, res.scores)
         
-        domain_scores = res.scores
+        combined_scores.update(res.scores)
+        
+        # 5. OPTIONAL: If image is provided, validate it too
+        # Both prompt AND image must pass for approval
+        if image_bytes:
+            logger.info("Use Case 2: Validating optional image attachment")
+            
+            # 5a. Image Hygiene Check
+            res = image_hygiene.check_hygiene(image_bytes)
+            if res.status == "BLOCK":
+                return self._block(["Image validation failed: " + r for r in res.reasons], request_hash)
+            
+            pil_image = res.metadata.get("pil_image")
+            
+            # 5b. Food CLIP Check with food type identification
+            res = image_food_clip.check_food_clip(pil_image, identify_type=True)
+            if res.status == "BLOCK":
+                return self._block(["Image validation failed: " + r for r in res.reasons], request_hash, res.scores)
+            
+            # Add image scores with prefix to distinguish from prompt scores
+            combined_scores["image_food_score"] = res.scores.get("food_score", 0)
+            combined_scores["image_non_food_score"] = res.scores.get("non_food_score", 0)
+            combined_scores["image_identified_food"] = res.scores.get("identified_food", "unknown")
+            combined_scores["image_food_type_confidence"] = res.scores.get("food_type_confidence", 0)
+            
+            food_identification = res.metadata.get("food_identification", {})
+            
+            logger.info(f"Image passed validation - Food: {food_identification.get('food_type', 'unknown')}")
 
-        # PASS - No image processing for prompt analysis use case
+        # PASS - Both prompt and image (if provided) passed validation
+        metadata = {"use_case": "prompt_analysis"}
+        if pil_image:
+            metadata["pil_image"] = pil_image
+            metadata["has_image"] = True
+            metadata["food_identification"] = food_identification
+        else:
+            metadata["has_image"] = False
+        
         final_result = GuardrailResult(
             status="PASS",
-            scores=domain_scores,
-            metadata={"use_case": "prompt_analysis"}
+            scores=combined_scores,
+            metadata=metadata
         )
         
         # Cache the success
@@ -125,7 +177,11 @@ class GuardrailEngine:
         Main entry point for the guardrail pipeline.
         Routes to appropriate use case:
         - Use Case 1: Image analysis (when image provided with specific prompt)
+          - Validates image is food-related
+          - Identifies what TYPE of food (pizza, cake, etc.)
         - Use Case 2: Prompt analysis (analyze user prompts for restrictions)
+          - Validates prompt is food-related
+          - If optional image provided, BOTH must pass validation
         Returns a GuardrailResult with status="PASS" or "BLOCK".
         """
         
